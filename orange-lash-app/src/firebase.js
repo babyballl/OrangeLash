@@ -2,13 +2,15 @@ import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
+// ⚠️ นำค่าเหล่านี้มาจาก Firebase Console ของคุณ
+// Project settings (ไอคอนเฟือง) > General > Your apps > SDK setup and configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyAqjRT-RsJsQEnfAWXePdLZVtwRJZwKEUU",
-  authDomain: "orangelash-63f99.firebaseapp.com",
-  projectId: "orangelash-63f99",
-  storageBucket: "orangelash-63f99.firebasestorage.app",
-  messagingSenderId: "185793229138",
-  appId: "1:185793229138:web:d74d4ccb305862188b8a8b",
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT_ID.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID",
 };
 
 const app = initializeApp(firebaseConfig);
