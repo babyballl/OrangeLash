@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { doc, getDoc, setDoc } from "firebase/firestore";
-import { onAuthStateChanged, signInWithPopup, signOut } from "firebase/auth";
+import { onAuthStateChanged, signInWithRedirect, getRedirectResult, signOut } from "firebase/auth";
 import { auth, googleProvider, db } from "./firebase";
 import {
   Home, Wallet, Package, Plus, X, Trash2, ChevronLeft, ChevronRight,
@@ -328,17 +328,9 @@ function QuickAction({ icon: Icon, label, onClick, color }) {
 
 function LogoMark({ size = 40 }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 100 100" fill="none">
-      <circle cx="50" cy="50" r="50" fill={COLORS.accentSoft} />
-      <path d="M23 40C26 32 38 25 52 26C60 27 66 30 71 35" stroke={COLORS.accentDeep} strokeWidth="3.2" strokeLinecap="round" fill="none" />
-      <path d="M20 60C28 52 40 49 51 51C56 52 60 54 63 56" stroke={COLORS.accentDeep} strokeWidth="2.6" strokeLinecap="round" fill="none" />
-      <path d="M20 61C31 68 44 69 55 65" stroke={COLORS.accentDeep} strokeWidth="1.6" strokeLinecap="round" fill="none" opacity="0.75" />
-      <path d="M60 55L74 45" stroke={COLORS.accentDeep} strokeWidth="2.2" strokeLinecap="round" />
-      <path d="M62 57L77 51" stroke={COLORS.accentDeep} strokeWidth="2.2" strokeLinecap="round" />
-      <path d="M63 60L79 59" stroke={COLORS.accentDeep} strokeWidth="2.2" strokeLinecap="round" />
-      <path d="M62 62L77 67" stroke={COLORS.accentDeep} strokeWidth="2" strokeLinecap="round" />
-      <path d="M60 64L72 72" stroke={COLORS.accentDeep} strokeWidth="1.8" strokeLinecap="round" />
-    </svg>
+    <div style={{ width: size, height: size, borderRadius: "50%", overflow: "hidden", background: COLORS.accentSoft, flexShrink: 0 }}>
+      <img src="/logo-icon.jpg" alt="Orange Lash" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+    </div>
   );
 }
 
@@ -1642,6 +1634,10 @@ export default function App() {
   const [authError, setAuthError] = useState(null);
 
   useEffect(() => {
+    // Catch the result after being redirected back from Google sign-in
+    getRedirectResult(auth).catch(() => {
+      setAuthError("เข้าสู่ระบบไม่สำเร็จ ลองใหม่อีกครั้ง");
+    });
     const unsubscribe = onAuthStateChanged(auth, (u) => setUser(u));
     return unsubscribe;
   }, []);
@@ -1650,10 +1646,10 @@ export default function App() {
     setSigningIn(true);
     setAuthError(null);
     try {
-      await signInWithPopup(auth, googleProvider);
+      await signInWithRedirect(auth, googleProvider);
+      // Browser navigates away here; code below only runs if redirect fails to start
     } catch (e) {
       setAuthError("เข้าสู่ระบบไม่สำเร็จ ลองใหม่อีกครั้ง");
-    } finally {
       setSigningIn(false);
     }
   }
