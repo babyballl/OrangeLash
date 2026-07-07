@@ -328,8 +328,8 @@ function QuickAction({ icon: Icon, label, onClick, color }) {
 
 function LogoMark({ size = 40 }) {
   return (
-    <div style={{ width: size, height: size, borderRadius: "50%", overflow: "hidden", background: COLORS.accentSoft, flexShrink: 0 }}>
-      <img src="/logo-icon.jpg" alt="Orange Lash" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+    <div style={{ width: size, height: size, borderRadius: "50%", overflow: "hidden", background: COLORS.accentSoft, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <img src="/logo-icon.jpg" alt="Orange Lash" style={{ width: "78%", height: "78%", objectFit: "contain" }} />
     </div>
   );
 }
