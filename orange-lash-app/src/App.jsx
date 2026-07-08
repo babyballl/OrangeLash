@@ -329,7 +329,7 @@ function QuickAction({ icon: Icon, label, onClick, color }) {
 function LogoMark({ size = 40 }) {
   return (
     <div style={{ width: size, height: size, borderRadius: "50%", overflow: "hidden", background: COLORS.accentSoft, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <img src="/logo-icon.jpg" alt="Orange Lash" style={{ width: "78%", height: "78%", objectFit: "contain" }} />
+      <img src="/logo-icon.jpg" alt="Orange Lash" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
     </div>
   );
 }
@@ -1598,13 +1598,13 @@ function SignInScreen({ onSignIn, signingIn, error }) {
     <div style={{ background: COLORS.bg, minHeight: "100vh", fontFamily: FONT_BODY }} className="flex items-center justify-center px-6">
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Taviraj:wght@400;500;600;700&family=Prompt:wght@400;500;600;700&display=swap');`}</style>
       <div className="w-full max-w-sm text-center">
-        <div className="flex justify-center mb-6">
-          <img
-            src="/logo-full.jpg"
-            alt="Orange Lash - บัญชีร้านต่อขนตา"
-            style={{ width: 200, height: 200, borderRadius: 24, objectFit: "cover", border: `1px solid ${COLORS.border}` }}
-          />
+        <div className="flex justify-center mb-4">
+          <LogoMark size={64} />
         </div>
+        <h1 style={{ color: COLORS.accentDeep, fontFamily: FONT_DISPLAY, letterSpacing: "0.06em" }} className="text-2xl font-semibold uppercase mb-1">
+          Orange Lash
+        </h1>
+        <p style={{ color: COLORS.inkSoft }} className="text-sm mb-8">บัญชีร้านต่อขนตา</p>
 
         <button
           onClick={onSignIn}
