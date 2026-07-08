@@ -1634,22 +1634,33 @@ export default function App() {
   const [authError, setAuthError] = useState(null);
 
   useEffect(() => {
+    console.log("=== Auth Effect Started ===");
     (async () => {
       try {
         const result = await getRedirectResult(auth);
-        console.log("Redirect result:", result);
+        console.log("✓ Redirect result:", result);
+        if (result?.user) {
+          console.log("✓ User from redirect:", result.user.email);
+        } else {
+          console.log("✓ No user in redirect result");
+        }
         setSigningIn(false);
       } catch (e) {
-        console.error("Auth redirect error:", e);
+        console.error("✗ Auth redirect error:", e.message, e.code);
         setAuthError("เข้าสู่ระบบไม่สำเร็จ ลองใหม่อีกครั้ง");
         setSigningIn(false);
       }
     })();
+
     const unsubscribe = onAuthStateChanged(auth, (u) => {
-      console.log("Auth state changed:", u);
+      console.log("✓ Auth state changed:", u ? `user: ${u.email}` : "null");
       setUser(u);
     });
-    return unsubscribe;
+
+    return () => {
+      console.log("=== Auth Effect Cleanup ===");
+      unsubscribe();
+    };
   }, []);
 
   async function handleSignIn() {
