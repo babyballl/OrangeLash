@@ -1644,9 +1644,11 @@ export default function App() {
     setSigningIn(true);
     setAuthError(null);
     try {
-      await signInWithPopup(auth, googleProvider);
+      const result = await signInWithPopup(auth, googleProvider);
+      console.log("✓ Sign in success:", result.user.email);
     } catch (e) {
-      setAuthError("เข้าสู่ระบบไม่สำเร็จ ลองใหม่อีกครั้ง");
+      console.error("✗ Sign in error:", e.code, e.message);
+      setAuthError(`เข้าสู่ระบบไม่สำเร็จ (${e.code})`);
       setSigningIn(false);
     }
   }
