@@ -1634,10 +1634,16 @@ export default function App() {
   const [authError, setAuthError] = useState(null);
 
   useEffect(() => {
-    // Catch the result after being redirected back from Google sign-in
-    getRedirectResult(auth).catch(() => {
-      setAuthError("เข้าสู่ระบบไม่สำเร็จ ลองใหม่อีกครั้ง");
-    });
+    (async () => {
+      try {
+        await getRedirectResult(auth);
+        setSigningIn(false);
+      } catch (e) {
+        console.error("Auth redirect error:", e);
+        setAuthError("เข้าสู่ระบบไม่สำเร็จ ลองใหม่อีกครั้ง");
+        setSigningIn(false);
+      }
+    })();
     const unsubscribe = onAuthStateChanged(auth, (u) => setUser(u));
     return unsubscribe;
   }, []);
