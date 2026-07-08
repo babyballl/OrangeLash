@@ -5,7 +5,7 @@ import { auth, googleProvider, db } from "./firebase";
 import {
   Home, Wallet, Package, Plus, X, Trash2, ChevronLeft, ChevronRight,
   AlertTriangle, TrendingUp, TrendingDown, Sparkles, ArrowDownCircle, ArrowUpCircle,
-  Check, Loader2, CalendarDays, BarChart3, Ban, Users, Crown, Receipt, Search, SlidersHorizontal, Camera, Download, LogOut, Mail,
+  Check, Loader2, CalendarDays, BarChart3, Ban, Users, Crown, Receipt, Search, SlidersHorizontal, Camera, Download, LogOut, Mail, Pencil,
 } from "lucide-react";
 
 const COLORS = {
@@ -377,6 +377,7 @@ function OrangeLashDashboard({ user, onSignOut }) {
   const [showExpenseForm, setShowExpenseForm] = useState(false);
   const [showMaterialForm, setShowMaterialForm] = useState(false);
   const [showQueueForm, setShowQueueForm] = useState(false);
+  const [editingQueue, setEditingQueue] = useState(null);
   const [adjustingMaterial, setAdjustingMaterial] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
 
@@ -492,6 +493,10 @@ function OrangeLashDashboard({ user, onSignOut }) {
     persist({ ...data, queue: [{ id: uid(), status: "pending", ...entry }, ...data.queue] });
     setShowQueueForm(false);
   }
+  function updateQueue(id, entry) {
+    persist({ ...data, queue: data.queue.map((q) => (q.id === id ? { ...q, ...entry } : q)) });
+    setEditingQueue(null);
+  }
   function updateQueueStatus(id, status) {
     persist({ ...data, queue: data.queue.map((q) => (q.id === id ? { ...q, status } : q)) });
   }
@@ -546,6 +551,37 @@ function OrangeLashDashboard({ user, onSignOut }) {
     () => data.queue.filter((q) => q.date === today && q.status === "pending").sort((a, b) => (a.time < b.time ? -1 : 1)),
     [data.queue, today]
   );
+
+  useEffect(() => {
+    if (typeof Notification === "undefined") return;
+    if (Notification.permission === "default") Notification.requestPermission();
+  }, []);
+
+  const notifiedQueueRef = useRef(new Set());
+  useEffect(() => {
+    if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
+    function checkUpcomingQueue() {
+      const now = new Date();
+      todayQueue.forEach((q) => {
+        if (notifiedQueueRef.current.has(q.id)) return;
+        const [h, m] = q.time.split(":").map(Number);
+        const queueTime = new Date();
+        queueTime.setHours(h, m, 0, 0);
+        const diffMin = (queueTime - now) / 60000;
+        if (diffMin <= 15 && diffMin >= -5) {
+          notifiedQueueRef.current.add(q.id);
+          new Notification("ใกล้ถึงคิวลูกค้า", {
+            body: `${q.customerName || "ลูกค้า"} เวลา ${q.time}${q.service ? " · " + q.service : ""}`,
+            icon: "/logo-icon.jpg",
+            tag: `queue-${q.id}`,
+          });
+        }
+      });
+    }
+    checkUpcomingQueue();
+    const interval = setInterval(checkUpcomingQueue, 60000);
+    return () => clearInterval(interval);
+  }, [todayQueue]);
 
   const monthRevenues = useMemo(
     () => data.revenues.filter((r) => r.date.slice(0, 7) === monthFilter).sort((a, b) => (a.date < b.date ? 1 : -1)),
@@ -701,6 +737,7 @@ function OrangeLashDashboard({ user, onSignOut }) {
               onDone={(item) => markDoneAndBill(item)}
               onCancel={(id) => updateQueueStatus(id, "cancelled")}
               onReopen={(id) => updateQueueStatus(id, "pending")}
+              onEdit={(item) => setEditingQueue(item)}
               onDelete={(id, label) => setConfirmDelete({ type: "queue", id, label })}
             />
           )}
@@ -762,6 +799,14 @@ function OrangeLashDashboard({ user, onSignOut }) {
       {showExpenseForm && <ExpenseForm onSave={addExpense} onClose={() => setShowExpenseForm(false)} />}
       {showMaterialForm && <MaterialForm onSave={addMaterial} onClose={() => setShowMaterialForm(false)} />}
       {showQueueForm && <QueueForm defaultDate={queueDate} onSave={addQueue} onClose={() => setShowQueueForm(false)} />}
+      {editingQueue && (
+        <QueueForm
+          defaultDate={queueDate}
+          initial={editingQueue}
+          onSave={(entry) => updateQueue(editingQueue.id, entry)}
+          onClose={() => setEditingQueue(null)}
+        />
+      )}
       {adjustingMaterial && (
         <AdjustStockForm material={adjustingMaterial} onSave={adjustStock} onClose={() => setAdjustingMaterial(null)} />
       )}
@@ -960,7 +1005,7 @@ function statusColors(status) {
   return { bg: COLORS.accentSoft, text: COLORS.accentDeep, label: "รอคิว" };
 }
 
-function QueueTab({ date, items, onShiftDate, onToday, onDone, onCancel, onReopen, onDelete }) {
+function QueueTab({ date, items, onShiftDate, onToday, onDone, onCancel, onReopen, onEdit, onDelete }) {
   const isToday = date === todayISO();
   const [statusFilter, setStatusFilter] = useState("all");
   const filtered = statusFilter === "all" ? items : items.filter((q) => q.status === statusFilter);
@@ -1023,6 +1068,9 @@ function QueueTab({ date, items, onShiftDate, onToday, onDone, onCancel, onReope
                       ย้ายกลับเป็นรอคิว
                     </button>
                   )}
+                  <button onClick={() => onEdit(q)} style={{ color: COLORS.inkSoft, background: COLORS.surfaceAlt }} className="rounded-xl py-2 px-3 active:scale-90 transition-transform" aria-label="แก้ไขคิว">
+                    <Pencil size={15} />
+                  </button>
                   <button onClick={() => onDelete(q.id, q.customerName)} style={{ color: COLORS.inkSoft, background: COLORS.surfaceAlt }} className="rounded-xl py-2 px-3 active:scale-90 transition-transform" aria-label="ลบคิว">
                     <Trash2 size={15} />
                   </button>
@@ -1036,21 +1084,21 @@ function QueueTab({ date, items, onShiftDate, onToday, onDone, onCancel, onReope
   );
 }
 
-function QueueForm({ defaultDate, onSave, onClose }) {
-  const [date, setDate] = useState(defaultDate);
-  const [time, setTime] = useState("10:00");
-  const [customerName, setCustomerName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [service, setService] = useState("");
-  const [note, setNote] = useState("");
+function QueueForm({ defaultDate, initial, onSave, onClose }) {
+  const [date, setDate] = useState(initial?.date || defaultDate);
+  const [time, setTime] = useState(initial?.time || "10:00");
+  const [customerName, setCustomerName] = useState(initial?.customerName || "");
+  const [phone, setPhone] = useState(initial?.phone || "");
+  const [service, setService] = useState(initial?.service || "");
+  const [note, setNote] = useState(initial?.note || "");
 
   function submit() {
-    if (!customerName.trim() || !service.trim()) return;
+    if (!time) return;
     onSave({ date, time, customerName: customerName.trim(), phone: phone.trim(), service: service.trim(), note: note.trim() });
   }
 
   return (
-    <Modal title="เพิ่มคิวลูกค้า" onClose={onClose}>
+    <Modal title={initial ? "แก้ไขคิวลูกค้า" : "เพิ่มคิวลูกค้า"} onClose={onClose}>
       <div className="grid grid-cols-2 gap-3">
         <Field label="วันที่"><input type="date" value={date} onChange={(e) => setDate(e.target.value)} style={inputStyle} /></Field>
         <Field label="เวลา"><input type="time" value={time} onChange={(e) => setTime(e.target.value)} style={inputStyle} /></Field>
@@ -1067,8 +1115,8 @@ function QueueForm({ defaultDate, onSave, onClose }) {
       <Field label="โน้ต (ถ้ามี)">
         <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="รายละเอียดเพิ่มเติม" style={inputStyle} />
       </Field>
-      <button onClick={submit} disabled={!customerName.trim() || !service.trim()} style={{ background: COLORS.accent, color: "#fff" }} className="w-full rounded-2xl py-3.5 flex items-center justify-center gap-2 text-sm font-medium mt-2 active:scale-[0.98] transition-transform">
-        <Check size={16} /> บันทึกคิว
+      <button onClick={submit} disabled={!time} style={{ background: COLORS.accent, color: "#fff" }} className="w-full rounded-2xl py-3.5 flex items-center justify-center gap-2 text-sm font-medium mt-2 active:scale-[0.98] transition-transform">
+        <Check size={16} /> {initial ? "บันทึกการแก้ไข" : "บันทึกคิว"}
       </button>
     </Modal>
   );
