@@ -1646,6 +1646,8 @@ export default function App() {
     try {
       const result = await signInWithPopup(auth, googleProvider);
       console.log("✓ Sign in success:", result.user.email);
+      setUser(result.user);
+      setSigningIn(false);
     } catch (e) {
       console.error("✗ Sign in error:", e.code, e.message);
       setAuthError(`เข้าสู่ระบบไม่สำเร็จ (${e.code})`);
