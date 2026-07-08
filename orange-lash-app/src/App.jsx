@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { doc, getDoc, setDoc } from "firebase/firestore";
-import { onAuthStateChanged, signInWithPopup, signOut } from "firebase/auth";
+import { onAuthStateChanged, signInWithRedirect, getRedirectResult, signOut } from "firebase/auth";
 import { auth, googleProvider, db } from "./firebase";
 import {
   Home, Wallet, Package, Plus, X, Trash2, ChevronLeft, ChevronRight,
@@ -1634,6 +1634,16 @@ export default function App() {
   const [authError, setAuthError] = useState(null);
 
   useEffect(() => {
+    (async () => {
+      try {
+        const result = await getRedirectResult(auth);
+        if (result?.user) {
+          console.log("✓ User from redirect:", result.user.email);
+        }
+      } catch (e) {
+        console.error("Auth redirect error:", e.message);
+      }
+    })();
     const unsubscribe = onAuthStateChanged(auth, (u) => {
       console.log("✓ Auth state changed:", u ? `user: ${u.email}` : "null");
       setUser(u);
@@ -1645,7 +1655,7 @@ export default function App() {
     setSigningIn(true);
     setAuthError(null);
     try {
-      await signInWithPopup(auth, googleProvider);
+      await signInWithRedirect(auth, googleProvider);
     } catch (e) {
       console.error("Sign in error:", e.message);
       setAuthError("เข้าสู่ระบบไม่สำเร็จ ลองใหม่อีกครั้ง");
