@@ -1636,7 +1636,8 @@ export default function App() {
   useEffect(() => {
     (async () => {
       try {
-        await getRedirectResult(auth);
+        const result = await getRedirectResult(auth);
+        console.log("Redirect result:", result);
         setSigningIn(false);
       } catch (e) {
         console.error("Auth redirect error:", e);
@@ -1644,7 +1645,10 @@ export default function App() {
         setSigningIn(false);
       }
     })();
-    const unsubscribe = onAuthStateChanged(auth, (u) => setUser(u));
+    const unsubscribe = onAuthStateChanged(auth, (u) => {
+      console.log("Auth state changed:", u);
+      setUser(u);
+    });
     return unsubscribe;
   }, []);
 
