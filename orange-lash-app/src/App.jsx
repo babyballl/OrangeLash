@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { doc, getDoc, setDoc } from "firebase/firestore";
-import { onAuthStateChanged, signInWithRedirect, getRedirectResult, signOut } from "firebase/auth";
+import { onAuthStateChanged, signInWithPopup, signOut } from "firebase/auth";
 import { auth, googleProvider, db } from "./firebase";
 import {
   Home, Wallet, Package, Plus, X, Trash2, ChevronLeft, ChevronRight,
@@ -1634,42 +1634,20 @@ export default function App() {
   const [authError, setAuthError] = useState(null);
 
   useEffect(() => {
-    console.log("=== Auth Effect Started ===");
-    (async () => {
-      try {
-        const result = await getRedirectResult(auth);
-        console.log("✓ Redirect result:", result);
-        if (result?.user) {
-          console.log("✓ User from redirect:", result.user.email);
-        } else {
-          console.log("✓ No user in redirect result");
-        }
-        setSigningIn(false);
-      } catch (e) {
-        console.error("✗ Auth redirect error:", e.message, e.code);
-        setAuthError("เข้าสู่ระบบไม่สำเร็จ ลองใหม่อีกครั้ง");
-        setSigningIn(false);
-      }
-    })();
-
     const unsubscribe = onAuthStateChanged(auth, (u) => {
       console.log("✓ Auth state changed:", u ? `user: ${u.email}` : "null");
       setUser(u);
     });
-
-    return () => {
-      console.log("=== Auth Effect Cleanup ===");
-      unsubscribe();
-    };
+    return unsubscribe;
   }, []);
 
   async function handleSignIn() {
     setSigningIn(true);
     setAuthError(null);
     try {
-      await signInWithRedirect(auth, googleProvider);
-      // Browser navigates away here; code below only runs if redirect fails to start
+      await signInWithPopup(auth, googleProvider);
     } catch (e) {
+      console.error("Sign in error:", e.message);
       setAuthError("เข้าสู่ระบบไม่สำเร็จ ลองใหม่อีกครั้ง");
       setSigningIn(false);
     }
