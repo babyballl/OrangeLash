@@ -756,8 +756,10 @@ function OrangeLashDashboard({ user, onSignOut }) {
             <QueueTab
               date={queueDate}
               items={dayQueue}
+              allQueue={data.queue}
               onShiftDate={(d) => setQueueDate(shiftDateISO(queueDate, d))}
               onToday={() => setQueueDate(todayISO())}
+              onSelectDate={(iso) => setQueueDate(iso)}
               onDone={(item) => markDoneAndBill(item)}
               onCancel={(id) => updateQueueStatus(id, "cancelled")}
               onReopen={(id) => updateQueueStatus(id, "pending")}
@@ -822,11 +824,12 @@ function OrangeLashDashboard({ user, onSignOut }) {
       )}
       {showExpenseForm && <ExpenseForm onSave={addExpense} onClose={() => setShowExpenseForm(false)} />}
       {showMaterialForm && <MaterialForm onSave={addMaterial} onClose={() => setShowMaterialForm(false)} />}
-      {showQueueForm && <QueueForm defaultDate={queueDate} onSave={addQueue} onClose={() => setShowQueueForm(false)} />}
+      {showQueueForm && <QueueForm defaultDate={queueDate} allQueue={data.queue} onSave={addQueue} onClose={() => setShowQueueForm(false)} />}
       {editingQueue && (
         <QueueForm
           defaultDate={queueDate}
           initial={editingQueue}
+          allQueue={data.queue}
           onSave={(entry) => updateQueue(editingQueue.id, entry)}
           onClose={() => setEditingQueue(null)}
         />
@@ -1029,10 +1032,86 @@ function statusColors(status) {
   return { bg: COLORS.accentSoft, text: COLORS.accentDeep, label: "รอคิว" };
 }
 
-function QueueTab({ date, items, onShiftDate, onToday, onDone, onCancel, onReopen, onEdit, onDelete }) {
+function QueueCalendarView({ allQueue, onSelectDate }) {
+  const today = todayISO();
+  const currentYM = today.slice(0, 7);
+  const [displayYM, setDisplayYM] = useState(currentYM);
+
+  const getDaysInMonth = (ym) => {
+    const [y, m] = ym.split("-").map(Number);
+    return new Date(y, m, 0).getDate();
+  };
+
+  const getFirstDayOfMonth = (ym) => {
+    const [y, m] = ym.split("-").map(Number);
+    return new Date(y, m - 1, 1).getDay();
+  };
+
+  const shiftMonth = (delta) => {
+    const [y, m] = displayYM.split("-").map(Number);
+    const d = new Date(y, m - 1 + delta, 1);
+    setDisplayYM(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+  };
+
+  const getQueueCount = (iso) => allQueue.filter((q) => q.date === iso && q.status === "pending").length;
+
+  const daysInMonth = getDaysInMonth(displayYM);
+  const firstDay = getFirstDayOfMonth(displayYM);
+  const days = [];
+  for (let i = 0; i < firstDay; i++) days.push(null);
+  for (let i = 1; i <= daysInMonth; i++) days.push(i);
+
+  const monthLabel = new Date(displayYM + "-01").toLocaleDateString("th-TH", { month: "long", year: "numeric" });
+
+  return (
+    <div className="mt-2">
+      <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.borderSoft}` }} className="rounded-2xl flex items-center justify-between p-1.5 mb-3">
+        <button onClick={() => shiftMonth(-1)} style={{ color: COLORS.inkSoft }} className="p-2 active:scale-90 transition-transform"><ChevronLeft size={20} /></button>
+        <p style={{ color: COLORS.ink, fontFamily: FONT_DISPLAY }} className="text-base font-semibold">{monthLabel}</p>
+        <button onClick={() => shiftMonth(1)} style={{ color: COLORS.inkSoft }} className="p-2 active:scale-90 transition-transform"><ChevronRight size={20} /></button>
+      </div>
+
+      <div className="grid grid-cols-7 gap-1 mb-3">
+        {["อ", "จ", "อ", "พ", "พ", "ศ", "ส"].map((day) => (
+          <div key={day} style={{ color: COLORS.inkSoft }} className="text-center text-xs font-medium py-2">
+            {day}
+          </div>
+        ))}
+        {days.map((day, idx) => {
+          if (!day)
+            return <div key={`empty-${idx}`} style={{ background: COLORS.surfaceAlt }} className="rounded-lg p-2" />;
+
+          const iso = `${displayYM}-${String(day).padStart(2, "0")}`;
+          const count = getQueueCount(iso);
+          const isToday = iso === today;
+
+          return (
+            <button
+              key={iso}
+              onClick={() => onSelectDate(iso)}
+              style={{
+                background: isToday ? COLORS.accent : count > 0 ? COLORS.accentSoft : COLORS.surfaceAlt,
+                color: isToday ? "#fff" : count > 0 ? COLORS.accentDeep : COLORS.ink,
+                border: `1px solid ${isToday ? COLORS.accent : "transparent"}`,
+              }}
+              className="rounded-lg p-2 text-center active:scale-95 transition-transform"
+            >
+              <p className="text-xs font-medium">{day}</p>
+              {count > 0 && <p className="text-[10px] mt-0.5">{count} คิว</p>}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function QueueTab({ date, items, allQueue, onShiftDate, onToday, onSelectDate, onDone, onCancel, onReopen, onEdit, onDelete }) {
   const isToday = date === todayISO();
   const [statusFilter, setStatusFilter] = useState("all");
+  const [showCalendar, setShowCalendar] = useState(false);
   const filtered = statusFilter === "all" ? items : items.filter((q) => q.status === statusFilter);
+
   return (
     <div className="mt-2">
       <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.borderSoft}` }} className="rounded-2xl flex items-center justify-between p-1.5">
@@ -1041,8 +1120,14 @@ function QueueTab({ date, items, onShiftDate, onToday, onDone, onCancel, onReope
           <p style={{ color: COLORS.ink, fontFamily: FONT_DISPLAY }} className="text-base font-semibold">{thaiDateShort(date)}</p>
           {!isToday && <p style={{ color: COLORS.accentDeep }} className="text-[11px]">แตะเพื่อกลับวันนี้</p>}
         </button>
-        <button onClick={() => onShiftDate(1)} style={{ color: COLORS.inkSoft }} className="p-2 active:scale-90 transition-transform" aria-label="วันถัดไป"><ChevronRight size={20} /></button>
+        <button onClick={() => setShowCalendar(!showCalendar)} style={{ color: COLORS.accentDeep }} className="p-2 active:scale-90 transition-transform" aria-label="เปิดปฏิทิน"><CalendarDays size={20} /></button>
       </div>
+
+      {showCalendar && (
+        <div className="mt-3 mb-3">
+          <QueueCalendarView allQueue={allQueue} onSelectDate={(iso) => { onSelectDate(iso); setShowCalendar(false); }} />
+        </div>
+      )}
 
       <div className="mt-4">
         <FilterPillRow
@@ -1108,25 +1193,46 @@ function QueueTab({ date, items, onShiftDate, onToday, onDone, onCancel, onReope
   );
 }
 
-function QueueForm({ defaultDate, initial, onSave, onClose }) {
+function QueueForm({ defaultDate, initial, allQueue, onSave, onClose }) {
   const [date, setDate] = useState(initial?.date || defaultDate);
   const [time, setTime] = useState(initial?.time || "10:00");
   const [customerName, setCustomerName] = useState(initial?.customerName || "");
   const [phone, setPhone] = useState(initial?.phone || "");
   const [service, setService] = useState(initial?.service || "");
   const [note, setNote] = useState(initial?.note || "");
+  const [showCalendar, setShowCalendar] = useState(false);
 
   function submit() {
     if (!time) return;
     onSave({ date, time, customerName: customerName.trim(), phone: phone.trim(), service: service.trim(), note: note.trim() });
   }
 
+  const getQueueCountForDate = (iso) => (allQueue || []).filter((q) => q.date === iso && q.status === "pending").length;
+  const selectedDateCount = getQueueCountForDate(date);
+
   return (
     <Modal title={initial ? "แก้ไขคิวลูกค้า" : "เพิ่มคิวลูกค้า"} onClose={onClose}>
       <div className="grid grid-cols-2 gap-3">
-        <Field label="วันที่"><input type="date" value={date} onChange={(e) => setDate(e.target.value)} style={inputStyle} /></Field>
+        <Field label="วันที่">
+          <div>
+            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} style={inputStyle} />
+            {selectedDateCount > 0 && <p style={{ color: COLORS.accentDeep }} className="text-xs mt-1">วันนี้มีคิวแล้ว {selectedDateCount} คิว</p>}
+          </div>
+        </Field>
         <Field label="เวลา"><input type="time" value={time} onChange={(e) => setTime(e.target.value)} style={inputStyle} /></Field>
       </div>
+
+      {showCalendar && (
+        <div className="mb-3">
+          <QueueCalendarView allQueue={allQueue || []} onSelectDate={(iso) => { setDate(iso); setShowCalendar(false); }} />
+        </div>
+      )}
+
+      {!showCalendar && (
+        <button onClick={() => setShowCalendar(true)} style={{ background: COLORS.accentSoft, color: COLORS.accentDeep }} className="w-full rounded-xl py-2 text-xs font-medium mb-3 active:scale-95 transition-transform">
+          📅 เลือกวันจากปฏิทิน
+        </button>
+      )}
       <Field label="ชื่อลูกค้า">
         <input value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="เช่น คุณน้ำฝน" style={inputStyle} />
       </Field>
