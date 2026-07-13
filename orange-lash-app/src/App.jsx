@@ -91,6 +91,30 @@ function shiftDateISO(iso, days) {
   return `${y}-${m}-${day}`;
 }
 
+function calculateTax(netIncome) {
+  if (netIncome <= 0) return 0;
+
+  const brackets = [
+    { min: 0, max: 150000, rate: 0 },
+    { min: 150001, max: 300000, rate: 0.05 },
+    { min: 300001, max: 500000, rate: 0.10 },
+    { min: 500001, max: 750000, rate: 0.15 },
+    { min: 750001, max: 1000000, rate: 0.20 },
+    { min: 1000001, max: 2000000, rate: 0.25 },
+    { min: 2000001, max: 5000000, rate: 0.30 },
+    { min: 5000001, max: Infinity, rate: 0.35 },
+  ];
+
+  let tax = 0;
+  for (const bracket of brackets) {
+    if (netIncome <= bracket.min) break;
+    const taxableInBracket = Math.min(netIncome, bracket.max) - bracket.min;
+    tax += taxableInBracket * bracket.rate;
+  }
+
+  return Math.round(tax);
+}
+
 function resizeImageDataUrl(dataUrl, maxSize) {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -1352,6 +1376,24 @@ function SummaryView({ year, setYear, breakdown }) {
       <div style={{ background: breakdown.yearNet >= 0 ? COLORS.accentSoft : COLORS.warnSoft }} className="rounded-2xl p-4 mt-3 text-center">
         <p style={{ color: breakdown.yearNet >= 0 ? COLORS.accentDeep : COLORS.warn }} className="text-xs font-medium mb-1">กำไรสุทธิทั้งปี</p>
         <p style={{ color: COLORS.ink, fontFamily: FONT_DISPLAY }} className="text-2xl font-semibold">{thb(breakdown.yearNet)}</p>
+      </div>
+
+      <div style={{ background: COLORS.warnSoft }} className="rounded-2xl p-4 mt-3">
+        <p style={{ color: COLORS.warn }} className="text-xs font-medium mb-3">ภาษีเงินได้</p>
+        <div className="text-sm mb-3">
+          <div style={{ color: COLORS.ink }} className="flex justify-between mb-2">
+            <span>เงินได้สุทธิ:</span>
+            <span className="font-medium">{thb(breakdown.yearNet)}</span>
+          </div>
+          <div style={{ color: COLORS.ink }} className="flex justify-between mb-2">
+            <span>ภาษี (ขั้นบันได):</span>
+            <span className="font-medium">{thb(calculateTax(breakdown.yearNet))}</span>
+          </div>
+          <div style={{ borderTop: `1px solid ${COLORS.border}`, paddingTop: 8, color: COLORS.ink }} className="flex justify-between">
+            <span>เงินได้หลังภาษี:</span>
+            <span className="font-semibold">{thb(breakdown.yearNet - calculateTax(breakdown.yearNet))}</span>
+          </div>
+        </div>
       </div>
 
       <div className="mt-5">
